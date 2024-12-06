@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+venv/
+
+# Environment variables
+.env
+credentials.json
+google_tokens.json
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
