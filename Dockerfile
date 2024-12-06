@@ -7,12 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Make start script executable
-RUN chmod +x start.sh
-
-# Default port
-ENV PORT=10000
-EXPOSE ${PORT}
-
-# Use start script
-CMD ["./start.sh"]
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT

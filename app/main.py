@@ -8,10 +8,6 @@ from app.services.auth import verify_api_key
 # Load environment variables
 load_dotenv()
 
-# Get port from environment variable with default
-port = int(os.environ.get("PORT", 10000))
-print(f"Starting server on port {port}")
-
 app = FastAPI(
     title="Solar Calendar API",
     description="API für die Verwaltung von Kalenderterminen für das Solar-Bot Projekt",
@@ -40,4 +36,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0")
