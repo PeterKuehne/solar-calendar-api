@@ -5,20 +5,32 @@ from pathlib import Path
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
+def get_redirect_uri():
+    """Get the appropriate redirect URI based on the environment"""
+    if os.getenv('RENDER'):
+        # Wenn auf Render deployed
+        return "https://solar-calendar-api.onrender.com/oauth2callback"
+    # Lokale Entwicklung
+    return "http://localhost"
+
 def setup_google_calendar():
     """Generate Google Calendar tokens for authentication"""
     try:
         # Get the absolute path of the project directory
         project_dir = Path(__file__).parent.absolute()
-        credentials_path = project_dir / 'credentials.json'
         
-        print(f"Project directory: {project_dir}")
-        print(f"Looking for credentials.json at: {credentials_path}")
-        
-        if not credentials_path.exists():
-            print(f"Error: credentials.json not found at {credentials_path}!")
-            print("\nPlease ensure credentials.json exists with this content:")
-            print("""{
+        # In production, get credentials from environment variable
+        if os.getenv('RENDER'):
+            creds_content = json.loads(os.getenv('GOOGLE_CREDENTIALS', '{}'))
+        else:
+            credentials_path = project_dir / 'credentials.json'
+            print(f"Project directory: {project_dir}")
+            print(f"Looking for credentials.json at: {credentials_path}")
+            
+            if not credentials_path.exists():
+                print(f"Error: credentials.json not found at {credentials_path}!")
+                print("\nPlease ensure credentials.json exists with this content:")
+                print("""{
   "installed": {
     "client_id": "your-client-id",
     "project_id": "your-project-id",
@@ -29,22 +41,23 @@ def setup_google_calendar():
     "redirect_uris": ["http://localhost"]
   }
 }""")
-            return
+                return
 
-        # Read and validate credentials file
-        try:
-            with credentials_path.open('r') as f:
-                creds_content = json.load(f)
-                if 'installed' not in creds_content:
-                    print("Error: Invalid credentials.json format! Missing 'installed' key.")
-                    return
-                print("Successfully read credentials.json")
-        except json.JSONDecodeError as e:
-            print(f"Error: credentials.json contains invalid JSON: {str(e)}")
+            # Read and validate credentials file
+            try:
+                with credentials_path.open('r') as f:
+                    creds_content = json.load(f)
+            except json.JSONDecodeError as e:
+                print(f"Error: credentials.json contains invalid JSON: {str(e)}")
+                return
+            except Exception as e:
+                print(f"Error reading credentials.json: {str(e)}")
+                return
+
+        if 'installed' not in creds_content:
+            print("Error: Invalid credentials format! Missing 'installed' key.")
             return
-        except Exception as e:
-            print(f"Error reading credentials.json: {str(e)}")
-            return
+        print("Successfully read credentials")
 
         # Import here to avoid errors if not installed
         try:
@@ -57,9 +70,9 @@ def setup_google_calendar():
         # Create flow
         try:
             flow = InstalledAppFlow.from_client_secrets_file(
-                str(credentials_path),  # Convert Path to string
+                json.dumps(creds_content),  # Convert dict to JSON string
                 SCOPES,
-                redirect_uri='http://localhost'
+                redirect_uri=get_redirect_uri()
             )
             
             print("\nStarting OAuth flow...")

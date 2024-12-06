@@ -8,6 +8,9 @@ from app.services.auth import verify_api_key
 # Load environment variables
 load_dotenv()
 
+# Get port from environment variable with default
+PORT = int(os.getenv("PORT", 10000))
+
 app = FastAPI(
     title="Solar Calendar API",
     description="API für die Verwaltung von Kalenderterminen für das Solar-Bot Projekt",
