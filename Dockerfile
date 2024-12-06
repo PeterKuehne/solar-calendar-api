@@ -7,4 +7,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+# Default port for local development
+ENV PORT=8000
+
+# Make the script executable
+RUN chmod +x /app/start.sh
+
+# Use shell form to allow environment variable substitution
+CMD /app/start.sh

@@ -32,7 +32,14 @@ app.include_router(
 
 @app.get("/")
 async def root():
-    return {"message": "Solar Calendar API is running"}
+    # Log environment for debugging
+    port = os.environ.get('PORT', '8000')
+    is_render = os.environ.get('RENDER', 'false')
+    return {
+        "message": "Solar Calendar API is running",
+        "port": port,
+        "is_render": is_render
+    }
 
 if __name__ == "__main__":
     import uvicorn
