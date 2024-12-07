@@ -34,10 +34,11 @@ class CalendarService:
             logger.error(f"Failed to initialize Calendar Service: {str(e)}")
             raise
 
-    def _validate_datetime(self, datetime_str: str) -> datetime:
-        """Validate and normalize the input datetime string"""
+    def _validate_datetime(self, date_str: str, time_str: str) -> datetime:
+        """Validate and normalize the input date and time strings"""
         try:
-            # Wenn das Datum ohne Zeitzone kommt, nehmen wir Europe/Berlin an
+            # Kombiniere Datum und Zeit
+            datetime_str = f"{date_str}T{time_str}:00"
             dt = datetime.fromisoformat(datetime_str)
             
             # Stelle sicher, dass das Datum in der Zukunft liegt
@@ -57,10 +58,10 @@ class CalendarService:
         except ValueError as e:
             raise ValueError(f"Ungültiges Datum oder Zeit: {str(e)}")
 
-    async def check_availability(self, datetime_str: str) -> Dict[str, Any]:
+    async def check_availability(self, date_str: str, time_str: str) -> Dict[str, Any]:
         """Check if a time slot is available"""
         try:
-            start_time = self._validate_datetime(datetime_str)
+            start_time = self._validate_datetime(date_str, time_str)
             
             # Debug logging
             logger.info(f"Checking availability for: {start_time}")
@@ -92,43 +93,48 @@ class CalendarService:
                 orderBy='startTime'
             ).execute()
             
-            if events_result.get('items', []):
+            events = events_result.get('items', [])
+            
+            if events:
                 return {
                     "available": False,
-                    "message": "Dieser Termin ist bereits vergeben."
+                    "message": "Dieser Zeitslot ist bereits belegt."
                 }
-                
+            
             return {
                 "available": True,
-                "start": start_time.isoformat(),
-                "end": end_time.isoformat()
+                "message": "Dieser Zeitslot ist verfügbar."
             }
-
+            
+        except ValueError as e:
+            raise ValueError(str(e))
         except Exception as e:
             logger.error(f"Error checking availability: {str(e)}")
             raise
 
     async def create_appointment(self,
-                               datetime_str: str,
+                               date_str: str,
+                               time_str: str,
                                email: str,
                                name: str,
                                phone: Optional[str] = None,
                                notes: Optional[str] = None) -> Dict[str, Any]:
         """Create a new appointment"""
         try:
-            # First check availability
-            availability = await self.check_availability(datetime_str)
-            if not availability.get("available"):
-                raise ValueError(availability.get("message"))
-
-            start_time = self._validate_datetime(datetime_str)
+            # Validate the datetime first
+            start_time = self._validate_datetime(date_str, time_str)
+            
+            # Check availability
+            availability = await self.check_availability(date_str, time_str)
+            if not availability["available"]:
+                raise ValueError(availability["message"])
+            
+            # Create the event
             end_time = start_time + timedelta(minutes=60)
-
-            event_body = {
-                'summary': f'Solar Beratung - {name}',
-                'description': f'Kunde: {name}\nEmail: {email}\n' + 
-                             (f'Telefon: {phone}\n' if phone else '') +
-                             (f'Notizen: {notes}' if notes else ''),
+            
+            event = {
+                'summary': f'Termin: {name}',
+                'description': f'Name: {name}\nEmail: {email}\nTelefon: {phone or "Nicht angegeben"}\nNotizen: {notes or "Keine"}',
                 'start': {
                     'dateTime': start_time.isoformat(),
                     'timeZone': 'Europe/Berlin',
@@ -148,24 +154,27 @@ class CalendarService:
                     ],
                 },
             }
-
+            
             event = self.service.events().insert(
                 calendarId=self.calendar_id,
-                body=event_body,
+                body=event,
                 sendUpdates='all'
             ).execute()
-
+            
             return {
-                "id": event["id"],
+                "id": event['id'],
                 "created": True,
-                "start": start_time.isoformat(),
-                "end": end_time.isoformat(),
-                "link": event.get("htmlLink")
+                "message": "Termin wurde erfolgreich gebucht.",
+                "details": {
+                    "start": start_time.isoformat(),
+                    "end": end_time.isoformat(),
+                    "name": name,
+                    "email": email
+                }
             }
-
-        except ValueError as ve:
-            logger.error(f"Validation error in create_appointment: {str(ve)}")
-            raise
+            
+        except ValueError as e:
+            raise ValueError(str(e))
         except Exception as e:
             logger.error(f"Error creating appointment: {str(e)}")
             raise

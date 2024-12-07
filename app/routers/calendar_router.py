@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Dict, Any
 from app.services.calendar_service import CalendarService
 from app.models.appointment import AppointmentCreate, AppointmentResponse
@@ -17,14 +17,15 @@ async def get_calendar_service():
 
 @router.get("/availability")
 async def check_availability(
-    datetime: str,
+    date: str = Query(..., description="Datum im Format YYYY-MM-DD (z.B. 2024-12-10)"),
+    time: str = Query(..., description="Zeit im Format HH:MM (z.B. 10:00)"),
     calendar_service: CalendarService = Depends(get_calendar_service)
 ) -> Dict[str, Any]:
     """
-    Check if a specific time slot is available for booking
+    Prüft ob ein Zeitslot für die Buchung verfügbar ist
     """
     try:
-        return await calendar_service.check_availability(datetime)
+        return await calendar_service.check_availability(date, time)
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -36,11 +37,12 @@ async def create_appointment(
     calendar_service: CalendarService = Depends(get_calendar_service)
 ) -> Dict[str, Any]:
     """
-    Create a new appointment
+    Erstellt einen neuen Termin
     """
     try:
         return await calendar_service.create_appointment(
-            datetime_str=appointment.datetime,
+            date_str=appointment.date,
+            time_str=appointment.time,
             email=appointment.email,
             name=appointment.name,
             phone=appointment.phone,
